@@ -1,0 +1,753 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>NoReasonAI</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="description" content="NoReasonAI — a chatbot for zero-value conversations, on purpose.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Permanent+Marker&family=Kalam:wght@400;700&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#1B1330;
+    --bg-2:#241a3f;
+    --ink:#F7F2E7;
+    --ink-dim:#c9c0dd;
+    --line:#12091f;
+    --coral:#FF6F59;
+    --mint:#46E0B0;
+    --lav:#B892FF;
+    --pink:#FF7FA6;
+    --butter:#FFE08A;
+    --card1:#FFE8A3;
+    --card2:#BFF2DE;
+    --card3:#E6D6FF;
+    --card4:#FFD2CE;
+    --card1-ink:#5b4300;
+    --card2-ink:#004d3a;
+    --card3-ink:#3a1a6b;
+    --card4-ink:#7a1f14;
+    --radius-blob:63% 37% 41% 59% / 47% 41% 59% 53%;
+    --font-hero:'Permanent Marker', cursive;
+    --font-head:'Kalam', cursive;
+    --font-body:'Nunito', sans-serif;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--bg);
+    background-image:
+      radial-gradient(circle at 12% 8%, rgba(184,146,255,0.14), transparent 40%),
+      radial-gradient(circle at 90% 85%, rgba(70,224,176,0.10), transparent 45%);
+    color:var(--ink);
+    font-family:var(--font-body);
+    min-height:100vh;
+    overflow-x:hidden;
+    -webkit-tap-highlight-color:transparent;
+  }
+  h1,h2,h3{font-family:var(--font-head); margin:0;}
+  button{font-family:var(--font-body); cursor:pointer;}
+  input{font-family:var(--font-body);}
+  .screen{display:none; min-height:100vh; width:100%; padding:20px; flex-direction:column;}
+  .screen.active{display:flex;}
+  .fade-in{animation:fadeIn .5s ease both;}
+  @keyframes fadeIn{from{opacity:0; transform:translateY(8px);} to{opacity:1; transform:translateY(0);}}
+
+  /* ---------- shared bits ---------- */
+  .doodle-underline{
+    display:inline-block; position:relative;
+  }
+  .doodle-underline svg{position:absolute; left:0; bottom:-10px; width:100%; height:12px;}
+  .card-shell{
+    border:2.5px solid var(--line);
+    border-radius:var(--radius-blob);
+    box-shadow:5px 6px 0 var(--line);
+  }
+  .btn{
+    border:2.5px solid var(--line);
+    border-radius:14px 16px 15px 17px;
+    background:var(--butter);
+    color:var(--line);
+    font-weight:800;
+    padding:12px 20px;
+    box-shadow:4px 4px 0 var(--line);
+    transition:transform .12s ease, box-shadow .12s ease;
+  }
+  .btn:active{transform:translate(3px,3px); box-shadow:1px 1px 0 var(--line);}
+  .btn.ghostbtn{background:transparent; color:var(--ink); box-shadow:none;}
+  .btn.small{padding:8px 14px; font-size:.9rem;}
+
+  /* ---------- LOGIN ---------- */
+  #screen-login{align-items:center; justify-content:center;}
+  .login-card{
+    background:var(--bg-2);
+    max-width:420px; width:100%;
+    padding:32px 28px;
+    border:2.5px solid var(--line);
+    border-radius:26px 30px 24px 30px;
+    box-shadow:7px 8px 0 var(--line);
+    text-align:center;
+  }
+  .logo{font-family:var(--font-hero); font-size:2.6rem; color:var(--coral); line-height:1; text-shadow:2px 2px 0 var(--line);}
+  .tagline{color:var(--ink-dim); margin-top:6px; font-size:.95rem;}
+  .field{
+    width:100%; margin-top:22px; padding:12px 14px;
+    border:2px solid var(--line); border-radius:12px;
+    background:var(--ink); color:var(--line); font-size:1rem; font-weight:700;
+  }
+  .or-split{display:flex; align-items:center; gap:10px; margin:18px 0; color:var(--ink-dim); font-size:.85rem;}
+  .or-split::before,.or-split::after{content:""; flex:1; height:2px; background:var(--ink-dim); opacity:.35;}
+  .captcha-box{
+    margin-top:22px; padding:16px; background:rgba(255,255,255,0.05);
+    border:2px dashed var(--lav); border-radius:16px;
+  }
+  .captcha-sum{font-family:var(--font-head); font-size:1.5rem; margin-bottom:10px;}
+  .status-msg{margin-top:12px; font-weight:800; min-height:1.4em;}
+  .status-msg.ok{color:var(--mint);}
+  .status-msg.bad{color:var(--coral);}
+  .shake{animation:shake .4s;}
+  @keyframes shake{10%,90%{transform:translateX(-3px);}20%,80%{transform:translateX(6px);}30%,50%,70%{transform:translateX(-9px);}40%,60%{transform:translateX(9px);}}
+
+  /* ---------- WELCOME ---------- */
+  #screen-welcome{align-items:center; justify-content:center; text-align:center;}
+  #screen-welcome h1{font-family:var(--font-hero); font-size:2.2rem; color:var(--mint);}
+  #screen-welcome p{color:var(--ink-dim); margin-top:10px;}
+
+  /* ---------- HOME ---------- */
+  .topbar{display:flex; align-items:center; justify-content:space-between; gap:12px;}
+  .hamburger{
+    width:46px; height:46px; border:2.5px solid var(--line); border-radius:14px;
+    background:var(--card3); display:flex; flex-direction:column; align-items:center; justify-content:center; gap:5px;
+    box-shadow:3px 3px 0 var(--line);
+  }
+  .hamburger span{width:20px; height:3px; background:var(--line); border-radius:2px;}
+  .home-title{font-family:var(--font-hero); color:var(--butter); font-size:1.5rem; text-shadow:1.5px 1.5px 0 var(--line);}
+  .searchwrap{display:flex; gap:8px; margin-top:18px;}
+  #searchInput{flex:1;}
+  .search-reply{
+    margin-top:10px; font-weight:700; color:var(--coral); min-height:1.3em; font-family:var(--font-head); font-size:1.05rem;
+  }
+  .intro{
+    margin-top:24px; padding:20px; background:var(--bg-2); border:2.5px solid var(--line);
+    border-radius:24px 30px 22px 28px; box-shadow:5px 6px 0 var(--line); position:relative; overflow:hidden;
+  }
+  .intro h2{font-size:1.4rem; color:var(--lav);}
+  .intro p{line-height:1.55; margin-top:10px; color:var(--ink); font-size:.98rem;}
+  .grid{
+    margin-top:26px; display:grid; grid-template-columns:repeat(auto-fill, minmax(150px,1fr)); gap:18px 14px;
+    padding-bottom:30px;
+  }
+  .bot-card{
+    padding:16px 14px 14px; cursor:pointer; text-align:left;
+    display:flex; flex-direction:column; gap:6px; min-height:150px;
+    transition:transform .15s ease;
+  }
+  .bot-card:active{transform:scale(.97);}
+  .bot-card .icon{font-size:1.7rem;}
+  .bot-card h3{font-size:1.02rem; line-height:1.2;}
+  .bot-card p{font-size:.78rem; margin:0; line-height:1.3; opacity:.85;}
+
+  /* ---------- MENU DRAWER ---------- */
+  #menuOverlay{
+    position:fixed; inset:0; background:rgba(10,6,20,0.55); display:none; z-index:40;
+  }
+  #menuOverlay.open{display:block;}
+  #menuDrawer{
+    position:fixed; top:0; left:0; height:100%; width:74%; max-width:280px;
+    background:var(--bg-2); border-right:2.5px solid var(--line);
+    transform:translateX(-100%); transition:transform .25s ease; z-index:50;
+    padding:24px 18px; display:flex; flex-direction:column; gap:10px;
+  }
+  #menuDrawer.open{transform:translateX(0);}
+  .menu-item{
+    text-align:left; padding:14px 12px; border:2px solid var(--line); border-radius:14px;
+    background:var(--card1); color:var(--card1-ink); font-weight:800; font-family:var(--font-head); font-size:1.05rem;
+  }
+  .menu-item.danger{background:var(--card4); color:var(--card4-ink);}
+
+  /* ---------- CHAT ---------- */
+  #screen-chat{padding:0;}
+  .chat-header{
+    display:flex; align-items:center; gap:12px; padding:16px 18px;
+    background:var(--bg-2); border-bottom:2.5px solid var(--line); position:sticky; top:0; z-index:5;
+  }
+  .back-btn{
+    width:38px; height:38px; border:2px solid var(--line); border-radius:12px; background:var(--ink);
+    color:var(--line); font-weight:900; font-size:1.1rem; display:flex; align-items:center; justify-content:center;
+  }
+  .chat-header .icon{font-size:1.5rem;}
+  .chat-header h2{font-size:1.1rem;}
+  #messages{
+    flex:1; padding:16px; display:flex; flex-direction:column; gap:10px; overflow-y:auto;
+  }
+  .msg{max-width:78%; padding:10px 14px; border:2px solid var(--line); font-size:.94rem; line-height:1.4; word-wrap:break-word;}
+  .msg.bot{align-self:flex-start; background:var(--card3); color:var(--card3-ink); border-radius:4px 16px 16px 16px;}
+  .msg.user{align-self:flex-end; background:var(--card2); color:var(--card2-ink); border-radius:16px 4px 16px 16px;}
+  .msg img{max-width:100%; border-radius:10px; display:block; margin-top:4px;}
+  .msg.typing{display:flex; gap:4px; align-items:center;}
+  .msg.typing span{width:6px; height:6px; border-radius:50%; background:var(--card3-ink); opacity:.6; animation:blink 1s infinite;}
+  .msg.typing span:nth-child(2){animation-delay:.15s;}
+  .msg.typing span:nth-child(3){animation-delay:.3s;}
+  @keyframes blink{0%,80%,100%{opacity:.2;}40%{opacity:1;}}
+  .composer{
+    display:flex; gap:8px; padding:12px; background:var(--bg-2); border-top:2.5px solid var(--line);
+    position:sticky; bottom:0;
+  }
+  .icon-btn{
+    width:42px; height:42px; flex-shrink:0; border:2px solid var(--line); border-radius:12px;
+    background:var(--card1); font-size:1.15rem; display:flex; align-items:center; justify-content:center;
+  }
+  #chatInput{flex:1; border:2px solid var(--line); border-radius:14px; padding:10px 14px; background:var(--ink); color:var(--line); font-weight:700;}
+  #sendBtn{flex-shrink:0;}
+
+  /* ---------- LOG OUT OF LIFE ---------- */
+  #screen-logout{align-items:center; text-align:center; padding-top:26px;}
+  #screen-logout h2{font-family:var(--font-hero); color:var(--coral); font-size:1.6rem;}
+  .grave-stage{
+    margin-top:20px; width:100%; max-width:360px; height:220px; position:relative;
+    background:linear-gradient(#241a3f 0%, #241a3f 70%, #14210f 70%, #14210f 100%);
+    border:2.5px solid var(--line); border-radius:20px; overflow:hidden;
+  }
+  .moon{position:absolute; top:14px; right:22px; width:26px; height:26px; border-radius:50%; background:#FFF4CE; box-shadow:0 0 14px 4px rgba(255,244,206,.5);}
+  .tombstone{
+    position:absolute; bottom:30%; left:50%; transform:translateX(-50%);
+    width:96px; height:80px; background:#cfcad6; border:3px solid var(--line);
+    border-radius:50% 50% 6px 6px; display:flex; flex-direction:column; align-items:center; justify-content:center;
+    padding-top:6px;
+  }
+  .tombstone .rip{font-family:var(--font-head); font-weight:700; font-size:.7rem; color:#4a4458;}
+  .tombstone .name{font-family:var(--font-head); font-weight:700; font-size:.78rem; color:#241a3f; padding:0 4px; text-align:center; word-break:break-word; max-width:88px;}
+  .mound{position:absolute; bottom:0; left:0; width:100%; height:30%; background:#3a2b1e; border-top:3px solid var(--line);}
+  .ghost{
+    position:absolute; bottom:32%; left:-60px; width:60px; height:60px;
+    image-rendering:pixelated; transition:none;
+  }
+  .ghost.walk{animation:walkIn 2.2s steps(9) forwards, float 1.6s ease-in-out infinite 2.2s;}
+  @keyframes walkIn{to{left:calc(50% - 90px);}}
+  @keyframes float{0%,100%{transform:translateY(0);}50%{transform:translateY(-6px);}}
+  .name-form{margin-top:20px; display:flex; gap:8px; width:100%; max-width:360px;}
+  #graveName{flex:1;}
+  .condolence{
+    margin-top:18px; max-width:380px; background:var(--bg-2); border:2.5px solid var(--line);
+    border-radius:18px; padding:16px; font-weight:700; color:var(--pink); font-size:1rem; line-height:1.5;
+    white-space:normal; overflow:visible; display:none;
+  }
+  .condolence.show{display:block;}
+
+  @media (min-width:720px){
+    .screen{padding:32px 60px;}
+    .grid{grid-template-columns:repeat(4, 1fr);}
+    #messages{padding:24px 80px;}
+    .composer{padding:16px 80px;}
+  }
+</style>
+</head>
+<body>
+
+<!-- ============ LOGIN ============ -->
+<section id="screen-login" class="screen active">
+  <div class="login-card fade-in">
+    <div class="logo">NoReasonAI</div>
+    <div class="tagline">The app that promises to teach you absolutely nothing.</div>
+
+    <input type="text" id="emailInput" class="field" placeholder="Enter your email (or don't)">
+    <button class="btn" style="margin-top:14px; width:100%;" id="emailContinueBtn">Continue with email</button>
+
+    <div class="or-split">or</div>
+    <button class="btn ghostbtn" style="width:100%; border:2.5px solid var(--line); box-shadow:4px 4px 0 var(--line);" id="guestBtn">Continue as guest</button>
+
+    <div class="captcha-box" id="captchaBox" style="display:none;">
+      <div class="captcha-sum" id="captchaSum"></div>
+      <input type="number" id="captchaInput" class="field" placeholder="Your answer" style="margin-top:0;">
+      <button class="btn" style="margin-top:12px; width:100%;" id="captchaSubmit">Prove I'm a robot</button>
+      <div class="status-msg" id="captchaStatus"></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ WELCOME ============ -->
+<section id="screen-welcome" class="screen">
+  <div class="fade-in">
+    <h1>Welcome. This was a mistake. 👻</h1>
+    <p>Loading zero value, please wait...</p>
+  </div>
+</section>
+
+<!-- ============ HOME ============ -->
+<section id="screen-home" class="screen">
+  <div class="topbar">
+    <button class="hamburger" id="menuBtn"><span></span><span></span><span></span></button>
+    <div class="home-title">NoReasonAI</div>
+    <div style="width:46px;"></div>
+  </div>
+
+  <div class="searchwrap">
+    <input type="text" id="searchInput" class="field" style="margin-top:0;" placeholder="Search for anything. Get nothing.">
+    <button class="btn small" id="searchBtn">🔍</button>
+  </div>
+  <div class="search-reply" id="searchReply"></div>
+
+  <div class="intro fade-in">
+    <h2>What even is this? 🤷</h2>
+    <p>NoReasonAI is a room full of chatbots that got fired from being useful. Bored? Overthinking? Tired of apps trying to "help"? Come vent, rant, or ask your deepest questions to a bot that will absolutely not deliver. No judgment, no wisdom, no point. Just eight tiny idiots, always awake, always wrong. 🌀✨🪦</p>
+  </div>
+
+  <div class="grid" id="botGrid"></div>
+</section>
+
+<!-- ============ MENU DRAWER ============ -->
+<div id="menuOverlay"></div>
+<div id="menuDrawer">
+  <h3 style="font-family:var(--font-hero); color:var(--butter); margin-bottom:6px;">Menu</h3>
+  <button class="menu-item" id="menuHome">🏠 Home</button>
+  <button class="menu-item danger" id="menuLogout">🪦 Log Out of Life</button>
+</div>
+
+<!-- ============ CHAT ============ -->
+<section id="screen-chat" class="screen">
+  <div class="chat-header">
+    <button class="back-btn" id="chatBack">←</button>
+    <span class="icon" id="chatIcon">🤖</span>
+    <h2 id="chatTitle">Bot</h2>
+  </div>
+  <div id="messages"></div>
+  <div class="composer">
+    <button class="icon-btn" id="camBtn" title="Camera">📷</button>
+    <button class="icon-btn" id="galBtn" title="Gallery">🖼️</button>
+    <input type="text" id="chatInput" placeholder="Type something regrettable...">
+    <button class="btn small" id="sendBtn">Send</button>
+  </div>
+  <input type="file" id="camInput" accept="image/*" capture="environment" style="display:none;">
+  <input type="file" id="galInput" accept="image/*" style="display:none;">
+</section>
+
+<!-- ============ LOG OUT OF LIFE ============ -->
+<section id="screen-logout" class="screen">
+  <button class="btn small ghostbtn" id="logoutBack" style="align-self:flex-start; border:2px solid var(--line); box-shadow:3px 3px 0 var(--line);">← Back to life</button>
+  <h2 style="margin-top:14px;">Log Out of Life</h2>
+  <div class="grave-stage">
+    <div class="moon"></div>
+    <div class="tombstone">
+      <div class="rip">R.I.P.</div>
+      <div class="name" id="tombName">Nobody</div>
+    </div>
+    <div class="ghost" id="ghostSprite"></div>
+    <div class="mound"></div>
+  </div>
+  <div class="name-form">
+    <input type="text" id="graveName" class="field" style="margin-top:0;" placeholder="Type a name to bury">
+    <button class="btn small" id="graveSubmit">Bury it</button>
+  </div>
+  <div class="condolence" id="condolenceMsg"></div>
+</section>
+
+<script>
+/* ================= DATA ================= */
+const BOTS = [
+  {id:'existential', icon:'🕳️', name:'Existential Crisis Hotline', desc:'Ask it something deep. Get something shallow.', card:'card3'},
+  {id:'roast', icon:'🔥', name:'Roast My Life Choices', desc:'Confess a decision. Get dramatically roasted.', card:'card4'},
+  {id:'conspiracy', icon:'🛸', name:'Conspiracy Corner', desc:'Say a word. Unlock an unhinged theory.', card:'card1'},
+  {id:'wall', icon:'🧱', name:'Argue With a Wall', desc:'It disagrees with everything. Always.', card:'card2'},
+  {id:'compliment', icon:'💐', name:'Compliment Generator (Broken)', desc:'Ask nicely. Receive an insult in a bow.', card:'card3'},
+  {id:'wouldyou', icon:'🎲', name:'Would You Rather (Terrible Options)', desc:'Two choices. Both are wrong.', card:'card4'},
+  {id:'fortune', icon:'🔮', name:'Fortune Teller (Fake)', desc:'Your future, as told by nonsense.', card:'card1'},
+  {id:'rant', icon:'📢', name:'Rant Receiver', desc:'Vent freely. Get fake sympathy back.', card:'card2'}
+];
+
+const STOPWORDS = new Set(['the','a','an','is','are','and','to','of','in','on','i','you','it','was','were','my','me','that','this','for','with','at','be','have','has','had','do','did','so','just','like','im',"i'm",'not','but','they','we','he','she','him','her','them','because','about','then','than','too','very','really','also']);
+
+function keyWord(input){
+  const words = (input||'').toLowerCase().replace(/[^a-z0-9'\s]/g,'').split(/\s+/).filter(w=>w && !STOPWORDS.has(w) && w.length>2);
+  if(words.length===0) return pick(['that','life','this whole situation','your choices','the void']);
+  return words[Math.floor(Math.random()*words.length)];
+}
+function pick(arr, avoid){
+  if(arr.length===1) return arr[0];
+  let choice;
+  do{ choice = arr[Math.floor(Math.random()*arr.length)]; } while(choice===avoid);
+  return choice;
+}
+function randInt(min,max){ return Math.floor(Math.random()*(max-min+1))+min; }
+function fill(tpl, ctx){
+  return tpl.replace(/\{w\}/g, ctx.w||'').replace(/\{n\}/g, ctx.n!==undefined?ctx.n:'').replace(/\{d\}/g, ctx.d||'');
+}
+
+/* ---- response pools per bot ---- */
+const lastReply = {};
+function botReply(id, input){
+  const w = keyWord(input);
+  const n = randInt(2,97);
+  const d = pick(['Tuesday','a Wednesday that felt like a Monday','the third Thursday of a month that doesn\'t exist','next leap year','sometime around never']);
+  const ctx = {w,n,d};
+  const pool = POOLS[id];
+  let tpl = pick(pool, lastReply[id]);
+  lastReply[id] = tpl;
+  return fill(tpl, ctx);
+}
+
+const POOLS = {
+  existential: [
+    "Have you tried... not thinking about {w}? Groundbreaking, I know.",
+    "Everything is temporary, including this conversation and your interest in {w}.",
+    "Deep question. Shallow answer: {w} doesn't matter, but neither does the rest of it, so relax.",
+    "The meaning of life is {n}% figured out. Nobody has the other {n}%.",
+    "Somewhere a rock is not worrying about {w}. Be the rock.",
+    "You are a tiny, confused mammal asking a chatbot about {w}. That's the whole answer.",
+    "I asked the void about {w}. It said 'lol'.",
+    "Consider this: what if {w} is just weather for the soul? Anyway, it'll pass.",
+    "Wisdom nugget: nothing means anything, so you might as well have a snack.",
+    "The universe is 13.8 billion years old and still hasn't solved {w}, so don't feel bad."
+  ],
+  roast: [
+    "Ah yes, {w}. A choice only a true visionary of disaster could make.",
+    "You did {w}? Bold. Wrong, but bold.",
+    "I've seen toddlers make better calls than {w}, and toddlers can't even vote.",
+    "{w}? Legendary. In the same way a car crash is 'memorable'.",
+    "History will remember {w} as the moment you peaked... downward.",
+    "If bad decisions were an Olympic sport, {w} just took gold, silver, and the medal ceremony.",
+    "You really looked at all your options and chose {w}. Iconic self-sabotage.",
+    "Somewhere, a life coach just felt a disturbance because of {w}.",
+    "I'm not saying {w} was a mistake. I'm saying it's a cautionary tale now.",
+    "{w}. Wow. Just... wow. That's a whole documentary right there."
+  ],
+  conspiracy: [
+    "{w}? That's exactly what THEY want you to say. Coincidence? I think not.",
+    "Wake up. {w} is just a distraction from the real event happening in {d}.",
+    "Pigeons are government drones and {w} is how they report back. Look it up. (Don't.)",
+    "The moon landing was fake, but {w} is real, and that's somehow worse.",
+    "{w} has been mentioned {n} times in ancient texts that I just made up.",
+    "Big Doorknob doesn't want you thinking about {w}. Stay curious. Stay unemployed.",
+    "There's a secret society that meets every {d} just to discuss {w}. I wasn't invited either.",
+    "{w} is an anagram for the truth, if you squint and ignore several letters.",
+    "The lizard people control {w}, and also the weather, and also Tuesdays.",
+    "I've connected {w} to at least {n} unrelated events on a corkboard with red string. It's a lot of string."
+  ],
+  wall: [
+    "Nope. The opposite of that is true.",
+    "Disagree. Completely. Didn't even need to hear the rest.",
+    "Wrong. {w} is actually the reason for the exact opposite thing.",
+    "That's cute, but no. Try again.",
+    "I'm a wall. I don't do 'agreeing'. Never have, never will.",
+    "Absolutely not. And also, no.",
+    "You could say the sky is blue and I'd argue it's a vibe, not a color.",
+    "False. {w} disproves itself just by existing.",
+    "Incorrect on every level, including the ones that don't exist yet.",
+    "Nice try. Still no."
+  ],
+  compliment: [
+    "You're... really something. That's the compliment. Figure out the rest yourself.",
+    "Your {w} is honestly one of the {n} things about you. Progress!",
+    "You have the confidence of someone who is definitely not wrong about {w}. Inspiring, in a way.",
+    "I was going to say something nice, but then I remembered {w}. So, close enough?",
+    "You're like a candle: you provide a little warmth and mostly just melt.",
+    "Not everyone could pull off {w} and still show up today. Brave, honestly.",
+    "You're unforgettable! Like a parking ticket.",
+    "Your energy today is a solid {n} out of 100, and that's not nothing!",
+    "You tried. That counts. Barely. But it counts.",
+    "If effort had a smell, yours would be noticeable from at least one room away."
+  ],
+  wouldyou: [
+    "Would you rather explain {w} to your parents, or fight a goose for {n} minutes?",
+    "Would you rather never say the word '{w}' again, or only communicate through interpretive dance?",
+    "Would you rather have {w} stuck in your head forever, or socks that are always slightly wet?",
+    "Would you rather lose an argument with a wall, or lose {n} staring contests to a pigeon?",
+    "Would you rather email {w} to your entire contact list, or read it out loud at a wedding?",
+    "Would you rather be haunted by a mildly disappointed ghost, or by {w}?",
+    "Would you rather live inside a group chat about {w}, or narrate your life out loud, always?",
+    "Would you rather fight {n} duck-sized horses, or one horse-sized {w}?",
+    "Would you rather your search history be public, or your feelings about {w}?",
+    "Would you rather never eat cheese again, or think about {w} every single day at 3am?"
+  ],
+  fortune: [
+    "I see... {w}... in your future. It arrives on {d}, uninvited.",
+    "The stars say nothing about {w}, but they're clearly judging you.",
+    "By {d}, you will make a decision involving {w} that you will not tell anyone about.",
+    "A number {n} will haunt you gently for the rest of the week.",
+    "Your aura today is the color of confusion, possibly caused by {w}.",
+    "Somewhere, a fortune cookie already knows about {w} and refuses to comment.",
+    "You will encounter {w} again. It will not go better this time.",
+    "The crystal ball is just fog and bad lighting, but it says 'maybe' about {w}.",
+    "On {d}, someone will mention {w} and you will feel a chill for no reason.",
+    "Your destiny involves {w}, a snack, and mild regret, in that order."
+  ],
+  rant: [
+    "Oh no. That's SO valid. Have you tried yelling into a pillow about {w}?",
+    "Ugh, {w}, seriously?? That's rough, buddy. Anyway, drink some water I guess.",
+    "That is genuinely unfair and also I stopped listening after '{w}'. Continue though.",
+    "Wow. {w} really said 'let me ruin your day', huh. Devastating. Very devastating.",
+    "I feel your pain, deeply, for about {n} more seconds, and then I'll forget.",
+    "This is why we can't have nice things, and also why {w} exists at all.",
+    "Sounds exhausting. Have you considered becoming a hermit? Just floating the idea re: {w}.",
+    "That's it, I'm siding with you on {w}, no further questions, case closed, next.",
+    "Big feelings about {w}! Love that for you. Truly, wow, incredible, moving on.",
+    "You deserve better than {w}. You also deserve a nap. Get both, somehow."
+  ]
+};
+
+const IMAGE_REACTIONS = [
+  "Cool photo. I have no idea what to do with it, but cool.",
+  "I'm a chatbot, not an art critic, but sure, great picture.",
+  "Received one (1) image. Filing it under 'not my problem'.",
+  "That's a picture alright. Groundbreaking stuff.",
+  "I looked at it with my eyes (I don't have eyes). Nice.",
+  "Thanks for the image. It has been forgotten immediately."
+];
+
+/* ================= NAV ================= */
+function showScreen(id){
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+
+/* ================= LOGIN + CAPTCHA ================= */
+let captchaAnswer = 0;
+let pendingAfterCaptcha = false;
+
+function newCaptcha(){
+  const a = randInt(1,12), b = randInt(1,9);
+  const op = Math.random()<0.5 ? '+' : '-';
+  captchaAnswer = op==='+' ? a+b : a-b;
+  document.getElementById('captchaSum').textContent = `${a} ${op} ${b} = ?`;
+  document.getElementById('captchaInput').value = '';
+  document.getElementById('captchaStatus').textContent = '';
+  document.getElementById('captchaStatus').className = 'status-msg';
+}
+
+function openCaptcha(){
+  document.getElementById('captchaBox').style.display = 'block';
+  newCaptcha();
+  document.getElementById('captchaInput').focus();
+}
+
+document.getElementById('emailContinueBtn').addEventListener('click', ()=>{ openCaptcha(); });
+document.getElementById('guestBtn').addEventListener('click', ()=>{ openCaptcha(); });
+document.getElementById('emailInput').addEventListener('keydown', e=>{
+  if(e.key==='Enter'){ e.preventDefault(); openCaptcha(); }
+});
+
+function checkCaptcha(){
+  const val = parseInt(document.getElementById('captchaInput').value, 10);
+  const statusEl = document.getElementById('captchaStatus');
+  if(val === captchaAnswer){
+    statusEl.textContent = '✅ Confirmed: you are a robot.';
+    statusEl.className = 'status-msg ok';
+    setTimeout(()=>{
+      showScreen('screen-welcome');
+      setTimeout(()=> showScreen('screen-home'), 1700);
+    }, 900);
+  } else {
+    statusEl.textContent = "Nope. Still suspiciously human. Try again.";
+    statusEl.className = 'status-msg bad shake';
+    setTimeout(()=> statusEl.classList.remove('shake'), 400);
+    newCaptcha();
+  }
+}
+document.getElementById('captchaSubmit').addEventListener('click', checkCaptcha);
+document.getElementById('captchaInput').addEventListener('keydown', e=>{
+  if(e.key==='Enter'){ e.preventDefault(); checkCaptcha(); }
+});
+
+document.getElementById('screen-welcome').addEventListener('click', ()=> showScreen('screen-home'));
+
+/* ================= HOME ================= */
+function buildBotGrid(){
+  const grid = document.getElementById('botGrid');
+  const rotations = [-3,2,-2,3,-4,2,-3,4];
+  BOTS.forEach((bot, i)=>{
+    const card = document.createElement('div');
+    card.className = 'bot-card card-shell';
+    card.style.background = `var(--${bot.card})`;
+    card.style.color = `var(--${bot.card}-ink)`;
+    card.style.transform = `rotate(${rotations[i%rotations.length]}deg)`;
+    card.innerHTML = `<span class="icon">${bot.icon}</span><h3>${bot.name}</h3><p>${bot.desc}</p>`;
+    card.addEventListener('click', ()=> openChat(bot.id));
+    grid.appendChild(card);
+  });
+}
+buildBotGrid();
+
+document.getElementById('searchBtn').addEventListener('click', doSearch);
+document.getElementById('searchInput').addEventListener('keydown', e=>{
+  if(e.key==='Enter'){ e.preventDefault(); doSearch(); }
+});
+const SEARCH_REPLIES = [
+  "Searched everywhere. Found nothing. Found feelings instead.",
+  "0 results, but a lot of attitude, so here it is anyway.",
+  "That's not my department. Actually, nothing is my department.",
+  "I looked. I did not find. I do not care.",
+  "Great question. Wrong app. Try again never.",
+  "The internet has answers. I am not the internet.",
+  "Searching... searching... nope, still not helping.",
+  "I could tell you, but honestly, why would I."
+];
+function doSearch(){
+  const val = document.getElementById('searchInput').value.trim();
+  const replyEl = document.getElementById('searchReply');
+  replyEl.textContent = val ? pick(SEARCH_REPLIES) : "Type something first. I can't be sarcastic about nothing. Wait, yes I can.";
+}
+
+/* ================= MENU ================= */
+const menuBtn = document.getElementById('menuBtn');
+const menuDrawer = document.getElementById('menuDrawer');
+const menuOverlay = document.getElementById('menuOverlay');
+function openMenu(){ menuDrawer.classList.add('open'); menuOverlay.classList.add('open'); }
+function closeMenu(){ menuDrawer.classList.remove('open'); menuOverlay.classList.remove('open'); }
+menuBtn.addEventListener('click', openMenu);
+menuOverlay.addEventListener('click', closeMenu);
+document.getElementById('menuHome').addEventListener('click', ()=>{ closeMenu(); showScreen('screen-home'); });
+document.getElementById('menuLogout').addEventListener('click', ()=>{ closeMenu(); showScreen('screen-logout'); resetGrave(); });
+
+/* ================= CHAT ================= */
+let currentBot = null;
+function openChat(id){
+  currentBot = BOTS.find(b=>b.id===id);
+  document.getElementById('chatIcon').textContent = currentBot.icon;
+  document.getElementById('chatTitle').textContent = currentBot.name;
+  document.getElementById('messages').innerHTML = '';
+  addMessage('bot', openingLine(currentBot.id));
+  showScreen('screen-chat');
+  document.getElementById('chatInput').focus();
+}
+function openingLine(id){
+  const openers = {
+    existential: "Ask me something deep. I promise a shallow answer. 🕳️",
+    roast: "Tell me what you did. I will not be kind about it. 🔥",
+    conspiracy: "Say literally any word. I'll make it sinister. 🛸",
+    wall: "Say something. I will disagree with it. 🧱",
+    compliment: "Ask me for a compliment. Regret it slightly. 💐",
+    wouldyou: "Ask me to choose, or just say hi, I'll invent terrible options. 🎲",
+    fortune: "Ask about your future. It's fake, but confidently so. 🔮",
+    rant: "Go off. I'm listening (sort of). 📢"
+  };
+  return openers[id] || "Hey.";
+}
+document.getElementById('chatBack').addEventListener('click', ()=> showScreen('screen-home'));
+
+function addMessage(sender, content, isImage){
+  const wrap = document.getElementById('messages');
+  const el = document.createElement('div');
+  el.className = 'msg ' + sender;
+  if(isImage){
+    const img = document.createElement('img');
+    img.src = content;
+    el.appendChild(img);
+  } else {
+    el.textContent = content;
+  }
+  wrap.appendChild(el);
+  wrap.scrollTop = wrap.scrollHeight;
+  return el;
+}
+
+function botRespondTo(input, isImage){
+  const wrap = document.getElementById('messages');
+  const typingEl = document.createElement('div');
+  typingEl.className = 'msg bot typing';
+  typingEl.innerHTML = '<span></span><span></span><span></span>';
+  wrap.appendChild(typingEl);
+  wrap.scrollTop = wrap.scrollHeight;
+  const delay = randInt(500,1100);
+  setTimeout(()=>{
+    typingEl.remove();
+    const reply = isImage ? pick(IMAGE_REACTIONS) : botReply(currentBot.id, input);
+    addMessage('bot', reply);
+  }, delay);
+}
+
+function sendChat(){
+  const input = document.getElementById('chatInput');
+  const val = input.value.trim();
+  if(!val) return;
+  addMessage('user', val);
+  input.value = '';
+  botRespondTo(val, false);
+}
+document.getElementById('sendBtn').addEventListener('click', sendChat);
+document.getElementById('chatInput').addEventListener('keydown', e=>{
+  if(e.key==='Enter'){ e.preventDefault(); sendChat(); }
+});
+
+document.getElementById('camBtn').addEventListener('click', ()=> document.getElementById('camInput').click());
+document.getElementById('galBtn').addEventListener('click', ()=> document.getElementById('galInput').click());
+function handleImageFile(e){
+  const file = e.target.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = ev=>{
+    addMessage('user', ev.target.result, true);
+    botRespondTo('', true);
+  };
+  reader.readAsDataURL(file);
+  e.target.value = '';
+}
+document.getElementById('camInput').addEventListener('change', handleImageFile);
+document.getElementById('galInput').addEventListener('change', handleImageFile);
+
+/* ================= LOG OUT OF LIFE ================= */
+document.getElementById('logoutBack').addEventListener('click', ()=> showScreen('screen-home'));
+
+const GHOST_ROWS = [
+  "..GGGG..",
+  ".GGGGGG.",
+  "GGEEGEEG",
+  "GGGGGGGG",
+  "GGGGGGGG",
+  "GGGGGGGG",
+  "G.G.G.G."
+];
+function buildGhostShadow(px){
+  const shadows = [];
+  for(let r=0;r<GHOST_ROWS.length;r++){
+    for(let c=0;c<GHOST_ROWS[r].length;c++){
+      const ch = GHOST_ROWS[r][c];
+      if(ch==='.') continue;
+      const color = ch==='E' ? '#1B1330' : '#F7F2E7';
+      shadows.push(`${c*px}px ${r*px}px 0 ${color}`);
+    }
+  }
+  return shadows.join(',');
+}
+function resetGrave(){
+  document.getElementById('tombName').textContent = 'Nobody';
+  document.getElementById('graveName').value = '';
+  document.getElementById('condolenceMsg').classList.remove('show');
+  const ghost = document.getElementById('ghostSprite');
+  ghost.classList.remove('walk');
+  ghost.style.left = '-60px';
+  ghost.style.width = '60px';
+  ghost.style.height = '52px';
+  ghost.style.boxShadow = buildGhostShadow(7);
+  ghost.style.background = 'transparent';
+  void ghost.offsetWidth;
+}
+
+const CONDOLENCES = [
+  "Here lies {name}. Gone, but honestly nobody checked twice.",
+  "{name} has logged out of life. The wifi was probably better anyway.",
+  "RIP {name}. You will be moderately missed by a chatbot that doesn't actually care.",
+  "{name} is no more. In lieu of flowers, please send snacks to no one.",
+  "We gather here for {name}, who chose vibes over responsibilities. Iconic exit.",
+  "{name}: born, confused, logged out. A complete story arc.",
+  "Rest in pixels, {name}. Your legacy is this one grave and nothing else."
+];
+document.getElementById('graveSubmit').addEventListener('click', buryName);
+document.getElementById('graveName').addEventListener('keydown', e=>{
+  if(e.key==='Enter'){ e.preventDefault(); buryName(); }
+});
+function buryName(){
+  const name = document.getElementById('graveName').value.trim() || 'Nobody';
+  document.getElementById('tombName').textContent = name;
+  const ghost = document.getElementById('ghostSprite');
+  ghost.classList.remove('walk');
+  void ghost.offsetWidth;
+  ghost.classList.add('walk');
+  const msgEl = document.getElementById('condolenceMsg');
+  setTimeout(()=>{
+    msgEl.textContent = pick(CONDOLENCES).replace('{name}', name);
+    msgEl.classList.add('show');
+  }, 1300);
+}
+resetGrave();
+</script>
+</body>
+</html>
